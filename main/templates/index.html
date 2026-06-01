@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IoT AC Control Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Rekayasa Sistem Internet</p>
+      <h1>IoT AC Control & Monitoring</h1>
+    </div>
+    <div class="mqtt-pill" id="mqttStatus">MQTT: checking</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel status-panel">
+      <div class="metric">
+        <span>Suhu</span>
+        <strong id="temperature">--</strong>
+      </div>
+      <div class="metric">
+        <span>Kelembapan</span>
+        <strong id="humidity">--</strong>
+      </div>
+      <div class="metric">
+        <span>Daya</span>
+        <strong id="power">--</strong>
+      </div>
+      <div class="metric">
+        <span>Energi</span>
+        <strong id="energy">--</strong>
+      </div>
+      <div class="metric">
+        <span>Gerak</span>
+        <strong id="motion">--</strong>
+      </div>
+      <div class="metric">
+        <span>Status AC</span>
+        <strong id="acStatus">--</strong>
+      </div>
+    </section>
+
+    <section class="panel controls">
+      <div class="section-head">
+        <h2>Kontrol AC Sharp</h2>
+        <span id="remoteSaved">SQL ready</span>
+      </div>
+
+      <div class="control-row">
+        <label for="powerSelect">Power</label>
+        <select id="powerSelect">
+          <option value="1">ON</option>
+          <option value="0">OFF</option>
+        </select>
+      </div>
+
+      <div class="control-row">
+        <label for="remoteTempInput">Temperature</label>
+        <div class="inline-input">
+          <input id="remoteTempInput" type="number" min="16" max="30" step="1" value="16">
+          <span>°C</span>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <label for="remoteModeSelect">Mode</label>
+        <select id="remoteModeSelect">
+          <option value="COOL">COOL</option>
+          <option value="AUTO">AUTO</option>
+          <option value="DRY">DRY</option>
+        </select>
+      </div>
+
+      <div class="control-row">
+        <label for="remoteFanSelect">Fan</label>
+        <select id="remoteFanSelect">
+          <option value="AUTO">AUTO</option>
+          <option value="LOW">LOW</option>
+          <option value="MED">MED</option>
+          <option value="MAX">MAX</option>
+        </select>
+      </div>
+
+      <div class="control-row">
+        <label for="remoteSwingSelect">Swing</label>
+        <select id="remoteSwingSelect">
+          <option value="AUTO">AUTO</option>
+          <option value="HIGH">HIGH</option>
+          <option value="MID">MID</option>
+          <option value="LOW">LOW</option>
+          <option value="LOWEST">LOWEST</option>
+        </select>
+      </div>
+
+      <div class="control-row">
+        <label for="ecoSelect">ECO</label>
+        <select id="ecoSelect">
+          <option value="0">OFF</option>
+          <option value="1">ON</option>
+        </select>
+      </div>
+
+      <div class="button-row">
+        <button class="primary" id="sendRemoteBtn">Kirim MQTT</button>
+        <button id="quickOnBtn">Quick ON</button>
+        <button id="quickOffBtn">Quick OFF</button>
+      </div>
+    </section>
+
+    <section class="panel chart-panel">
+      <div class="section-head">
+        <h2>Grafik Real-time</h2>
+        <a href="/api/export.csv">Export CSV</a>
+      </div>
+      <canvas id="realtimeChart" width="900" height="320"></canvas>
+      <div class="legend">
+        <span><i class="temp"></i>Suhu</span>
+        <span><i class="humidity"></i>Kelembapan</span>
+      </div>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="section-head">
+        <h2>Histori Terbaru</h2>
+        <span id="lastUpdate">--</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Waktu</th>
+              <th>Suhu</th>
+              <th>Kelembapan</th>
+              <th>Daya</th>
+              <th>Arus</th>
+              <th>Tegangan</th>
+              <th>Gerak</th>
+              <th>AC</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="section-head">
+        <h2>Histori Command AC</h2>
+        <span>disimpan di SQL</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Waktu</th>
+              <th>Power</th>
+              <th>Temp</th>
+              <th>Mode</th>
+              <th>Fan</th>
+              <th>Swing</th>
+              <th>ECO</th>
+            </tr>
+          </thead>
+          <tbody id="commandBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    window.DASHBOARD_CONFIG = {
+      defaultMode: "{{ default_mode }}",
+      defaultSetpoint: {{ default_setpoint }}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
