@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mode Manual - Smart AC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Mode Manual</p>
+        <h1>Kontrol AC dari Web</h1>
+      </div>
+      <nav class="nav-actions">
+        <a href="/mode">Mode</a>
+        <a href="/automatic">Otomatis</a>
+        <button class="secondary" onclick="logout()">Logout</button>
+      </nav>
+    </header>
+
+    <section class="status-grid">
+      <div class="metric"><span>Suhu</span><strong id="suhu">-</strong></div>
+      <div class="metric"><span>Kelembapan</span><strong id="kelembapan">-</strong></div>
+      <div class="metric"><span>Ada Manusia</span><strong id="presence">-</strong></div>
+      <div class="metric"><span>Status AC</span><strong id="ac_status">-</strong></div>
+    </section>
+
+    <section class="control-panel">
+      <div>
+        <h2>Kontrol Manual</h2>
+        <p>Di mode ini Raspberry Pi tidak mengambil keputusan ON/OFF dari kamera. Perintah AC berasal dari tombol web.</p>
+      </div>
+      <div class="button-row">
+        <button onclick="sendControl('ON')">AC ON</button>
+        <button class="danger" onclick="sendControl('OFF')">AC OFF</button>
+        <input id="setpoint" type="number" min="16" max="30" value="24">
+        <button class="secondary" onclick="sendSetTemperature()">Set Suhu AC</button>
+      </div>
+    </section>
+
+    <section class="chart-grid">
+      <div class="chart-card">
+        <h2>Grafik Suhu</h2>
+        <canvas id="tempChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h2>Grafik Kelembapan</h2>
+        <canvas id="humidityChart"></canvas>
+      </div>
+    </section>
+
+    <p id="message" class="message"></p>
+  </main>
+
+  <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  <script>startDashboard("MANUAL");</script>
+</body>
+</html>

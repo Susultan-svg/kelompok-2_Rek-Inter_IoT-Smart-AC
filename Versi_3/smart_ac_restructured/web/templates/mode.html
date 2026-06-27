@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pilih Mode - Smart AC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <main class="page-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Smart AC Dashboard</p>
+        <h1>Pilih Mode Kontrol</h1>
+      </div>
+      <button class="secondary" onclick="logout()">Logout</button>
+    </header>
+
+    <section class="mode-grid">
+      <article class="mode-card">
+        <h2>Otomatis</h2>
+        <p>Raspberry Pi memakai kamera untuk menentukan ada manusia atau tidak, lalu mengontrol AC mengikuti setpoint.</p>
+        <button onclick="chooseMode('AUTO')">Masuk Otomatis</button>
+      </article>
+
+      <article class="mode-card">
+        <h2>Manual</h2>
+        <p>Web menjadi kontroler AC. Raspberry Pi tetap membaca sensor dan kamera, tetapi tidak otomatis menyalakan atau mematikan AC.</p>
+        <button onclick="chooseMode('MANUAL')">Masuk Manual</button>
+      </article>
+    </section>
+
+    <p id="message" class="message"></p>
+  </main>
+
+  <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  <script>requireAuth();</script>
+</body>
+</html>
