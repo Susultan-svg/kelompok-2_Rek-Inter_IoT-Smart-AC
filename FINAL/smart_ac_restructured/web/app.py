@@ -17,11 +17,12 @@ app = Flask(__name__)
 app.config["MQTT_BROKER_URL"] = os.getenv(
     "MQTT_HOST", "588b45b14a3644ab9b3d9b8f040f1f8d.s1.eu.hivemq.cloud"
 )
-app.config["MQTT_BROKER_PORT"] = int(os.getenv("MQTT_PORT", "8883"))
+app.config["MQTT_BROKER_PORT"] = int(os.getenv("MQTT_PORT", "8884"))
 app.config["MQTT_USERNAME"] = os.getenv("MQTT_USERNAME", "esp32_sensor")
 app.config["MQTT_PASSWORD"] = os.getenv("MQTT_PASSWORD", "Esp32gacor")
 app.config["MQTT_TLS_ENABLED"] = True
 app.config["MQTT_CLIENT_ID"] = os.getenv("MQTT_CLIENT_ID", "web-dashboard-smart-ac")
+app.config["MQTT_TRANSPORT"] = os.getenv("MQTT_TRANSPORT", "websockets")
 app.config["MQTT_KEEPALIVE"] = 60
 app.config["MQTT_REFRESH_TIME"] = 1.0
 app.config["MQTT_TLS_CA_CERTS"] = certifi.where()
@@ -29,7 +30,10 @@ app.config["MQTT_TLS_VERSION"] = ssl.PROTOCOL_TLSv1_2
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "53b023a4-3ef2-4b2c-a988-1d48397ce684")
 
 jwt = JWTManager(app)
-mqtt = Mqtt(app)
+mqtt = Mqtt()
+if app.config["MQTT_TRANSPORT"] == "websockets":
+    mqtt.client.ws_set_options(path=os.getenv("MQTT_WEBSOCKET_PATH", "/mqtt"))
+mqtt.init_app(app)
 
 TOPIC_TELEMETRY = "home/ac/telemetry"
 TOPIC_STATUS = "home/ac/status"

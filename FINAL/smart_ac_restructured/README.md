@@ -20,10 +20,19 @@ Versi ini memisahkan tugas sesuai arsitektur proyek:
 - `web/app.py`
   - dashboard/API cloud
   - autentikasi JWT
-  - subscribe data dari MQTT
+  - subscribe data dari MQTT over WebSocket
   - simpan data sensor ke PostgreSQL
   - publish command/mode/setpoint ke Raspberry Pi via MQTT
   - tidak membuka kamera dan tidak membaca serial
+
+## MQTT Transport
+
+- Web Flask/Railway memakai MQTT over WebSocket TLS:
+  - `MQTT_TRANSPORT=websockets`
+  - `MQTT_PORT=8884`
+  - `MQTT_WEBSOCKET_PATH=/mqtt`
+- Raspberry Pi tetap memakai MQTT TLS biasa:
+  - `MQTT_PORT=8883`
 
 ## Topic MQTT
 
