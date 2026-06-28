@@ -24,7 +24,7 @@ CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "0"))
 
 FACE_CHECK_INTERVAL_SECONDS = float(os.getenv("FACE_CHECK_INTERVAL_SECONDS", "2"))
 NO_PERSON_TIMEOUT_SECONDS = float(os.getenv("NO_PERSON_TIMEOUT_SECONDS", "60"))
-TELEMETRY_INTERVAL_SECONDS = float(os.getenv("TELEMETRY_INTERVAL_SECONDS", "5"))
+TELEMETRY_INTERVAL_SECONDS = float(os.getenv("TELEMETRY_INTERVAL_SECONDS", "30"))
 
 TOPIC_TELEMETRY = "home/ac/telemetry"
 TOPIC_STATUS = "home/ac/status"
@@ -39,6 +39,8 @@ class EdgeState:
     suhu: Optional[float] = None
     kelembaban: Optional[float] = None
     presence: bool = False
+    presence_updated_at: float = 0.0
+    camera_update_interval_seconds: float = FACE_CHECK_INTERVAL_SECONDS
     ac_status: str = "OFF"
     mode: str = "AUTO"
     setpoint: int = 24
@@ -78,6 +80,8 @@ def telemetry_snapshot() -> dict:
             "suhu": state.suhu,
             "kelembaban": state.kelembaban,
             "presence": state.presence,
+            "presence_updated_at": state.presence_updated_at or None,
+            "camera_update_interval_seconds": state.camera_update_interval_seconds,
             "ac_status": state.ac_status,
             "mode": state.mode,
             "setpoint": state.setpoint,
@@ -99,7 +103,21 @@ def publish_state() -> None:
         },
         retain=True,
     )
-    publish_json(TOPIC_PRESENCE, {"presence": snapshot["presence"]}, retain=True)
+    publish_presence(snapshot)
+
+
+def publish_presence(snapshot: Optional[dict] = None) -> None:
+    if snapshot is None:
+        snapshot = telemetry_snapshot()
+    publish_json(
+        TOPIC_PRESENCE,
+        {
+            "presence": snapshot["presence"],
+            "presence_updated_at": snapshot["presence_updated_at"],
+            "camera_update_interval_seconds": snapshot["camera_update_interval_seconds"],
+        },
+        retain=True,
+    )
 
 
 def handle_esp32_line(line: str) -> None:
@@ -188,12 +206,16 @@ def camera_worker() -> None:
         found_person = len(boxes) > 0
 
         changed = False
+        checked_at = time.time()
         with state_lock:
+            state.presence_updated_at = checked_at
             if found_person:
-                state.last_person_seen_at = time.time()
+                state.last_person_seen_at = checked_at
             if state.presence != found_person:
                 state.presence = found_person
                 changed = True
+
+        publish_presence()
 
         if changed:
             print(f"presence changed: {'YES' if found_person else 'NO'}")
@@ -235,8 +257,10 @@ def on_message(client, userdata, message):
             return
 
         with state_lock:
-            manual_allowed = state.mode == "MANUAL"
-            if command in {"ON", "OFF"} and manual_allowed:
+            if state.mode != "MANUAL":
+                print(f"ignored manual command in AUTO mode: {command}")
+                return
+            if command in {"ON", "OFF"}:
                 state.ac_status = command
             elif command == "SET_TEMP" and "temperature" in data:
                 state.setpoint = int(data["temperature"])
