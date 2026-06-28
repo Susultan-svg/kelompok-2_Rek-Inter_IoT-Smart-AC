@@ -1,6 +1,8 @@
 const TOKEN_KEY = "smart_ac_token";
 let tempChart = null;
 let humidityChart = null;
+let pendingSetpointValue = null;
+let pendingSetpointUntil = 0;
 
 function token() {
   return localStorage.getItem(TOKEN_KEY) || "";
@@ -83,14 +85,28 @@ async function sendControl(command) {
 
 async function setSetpoint() {
   const setpoint = document.getElementById("setpoint").value;
-  await authPost("/api/setpoint", {setpoint});
+  holdSetpoint(setpoint);
+  const data = await authPost("/api/setpoint", {setpoint});
+  if (!data) clearPendingSetpoint();
   await refreshLatest();
 }
 
 async function sendSetTemperature() {
   const temperature = document.getElementById("setpoint").value;
-  await authPost("/api/control", {command: "SET_TEMP", temperature});
+  holdSetpoint(temperature);
+  const data = await authPost("/api/setpoint", {setpoint: temperature});
+  if (!data) clearPendingSetpoint();
   await refreshLatest();
+}
+
+function holdSetpoint(value) {
+  pendingSetpointValue = String(value);
+  pendingSetpointUntil = Date.now() + 15000;
+}
+
+function clearPendingSetpoint() {
+  pendingSetpointValue = null;
+  pendingSetpointUntil = 0;
 }
 
 function formatNumber(value, suffix) {
@@ -100,6 +116,34 @@ function formatNumber(value, suffix) {
   return `${number.toFixed(1)} ${suffix}`;
 }
 
+function formatPresenceMeta(data) {
+  if (!data.presence_updated_at && !data.presence_updated_at_epoch) {
+    return "Menunggu update kamera Raspberry";
+  }
+
+  const updatedMs = data.presence_updated_at_epoch
+    ? Number(data.presence_updated_at_epoch) * 1000
+    : new Date(data.presence_updated_at).getTime();
+  if (Number.isNaN(updatedMs)) {
+    return "Update kamera terakhir diterima";
+  }
+  const updated = new Date(updatedMs);
+
+  const seconds = Math.max(0, Math.round((Date.now() - updated.getTime()) / 1000));
+  const interval = Number(data.camera_update_interval_seconds || 120);
+  const nextIn = Math.max(0, interval - seconds);
+  const timeText = updated.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+
+  if (nextIn > 0) {
+    return `Update kamera terakhir ${timeText}. Menahan data sampai update berikutnya sekitar ${nextIn}s.`;
+  }
+  return `Update kamera terakhir ${timeText}. Menunggu update baru dari Raspberry.`;
+}
+
 async function refreshLatest() {
   const res = await fetch("/api/latest");
   const data = await res.json();
@@ -107,15 +151,32 @@ async function refreshLatest() {
   const suhu = document.getElementById("suhu");
   const kelembapan = document.getElementById("kelembapan");
   const presence = document.getElementById("presence");
+  const presenceMeta = document.getElementById("presenceMeta");
   const acStatus = document.getElementById("ac_status");
   const setpoint = document.getElementById("setpoint");
 
   if (suhu) suhu.textContent = formatNumber(data.suhu, "C");
   if (kelembapan) kelembapan.textContent = formatNumber(data.kelembapan ?? data.kelembaban, "%");
-  if (presence) presence.textContent = data.presence || data.motion === 1 ? "Ya" : "Tidak";
+  if (presence) {
+    if (data.presence === null || data.presence === undefined) {
+      presence.textContent = "Menunggu";
+    } else {
+      presence.textContent = data.presence || data.motion === 1 ? "Ya" : "Tidak";
+    }
+  }
+  if (presenceMeta) presenceMeta.textContent = formatPresenceMeta(data);
   if (acStatus) acStatus.textContent = data.ac_status || "-";
   if (setpoint && data.setpoint !== undefined && document.activeElement !== setpoint) {
-    setpoint.value = data.setpoint;
+    const latestSetpoint = String(data.setpoint);
+    if (pendingSetpointValue && latestSetpoint === pendingSetpointValue) {
+      clearPendingSetpoint();
+    }
+    if (pendingSetpointValue && Date.now() < pendingSetpointUntil) {
+      setpoint.value = pendingSetpointValue;
+    } else {
+      clearPendingSetpoint();
+      setpoint.value = data.setpoint;
+    }
   }
 }
 

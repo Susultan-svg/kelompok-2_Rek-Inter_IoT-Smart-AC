@@ -37,7 +37,7 @@ TOPIC_PRESENCE = "home/ac/presence"
 TOPIC_COMMAND = "home/ac/command"
 TOPIC_MODE = "home/ac/mode"
 TOPIC_SETPOINT = "home/ac/setpoint"
-CAMERA_UPDATE_INTERVAL_SECONDS = int(os.getenv("CAMERA_UPDATE_INTERVAL_SECONDS", "120"))
+CAMERA_UPDATE_INTERVAL_SECONDS = int(os.getenv("CAMERA_UPDATE_INTERVAL_SECONDS", "10"))
 
 current_state = {
     "suhu": None,
@@ -46,6 +46,7 @@ current_state = {
     "presence": None,
     "motion": None,
     "presence_updated_at": None,
+    "presence_updated_at_epoch": None,
     "camera_update_interval_seconds": CAMERA_UPDATE_INTERVAL_SECONDS,
     "ac_status": "OFF",
     "mode": "AUTO",
@@ -91,10 +92,12 @@ def update_presence(value, updated_at=None):
     current_state["presence"] = detected
     current_state["motion"] = 1 if detected else 0
     if isinstance(updated_at, (int, float)):
+        current_state["presence_updated_at_epoch"] = float(updated_at)
         current_state["presence_updated_at"] = datetime.fromtimestamp(updated_at).isoformat(timespec="seconds")
     elif updated_at is not None:
         current_state["presence_updated_at"] = updated_at
     elif previous != detected or current_state["presence_updated_at"] is None:
+        current_state["presence_updated_at_epoch"] = None
         current_state["presence_updated_at"] = now_iso()
 
 
@@ -180,9 +183,9 @@ def handle_mqtt_message(client, userdata, message):
         if "kelembaban" in data:
             current_state["kelembapan"] = data["kelembaban"]
         if "presence" in data:
-            update_presence(data["presence"], data.get("presence_updated_at") or data.get("timestamp"))
+            update_presence(data["presence"], data.get("presence_updated_at"))
         elif "motion" in data:
-            update_presence(data["motion"], data.get("presence_updated_at") or data.get("timestamp"))
+            update_presence(data["motion"], data.get("presence_updated_at"))
         try:
             log_sensor_data()
         except Exception as exc:
@@ -328,8 +331,12 @@ def control_ac():
             payload["temperature"] = max(16, min(30, int(data.get("temperature"))))
         except (TypeError, ValueError):
             return jsonify({"status": "gagal", "pesan": "Temperature tidak valid"}), 400
+        current_state["setpoint"] = payload["temperature"]
 
-    mqtt.publish(TOPIC_COMMAND, json.dumps(payload))
+    if command == "SET_TEMP":
+        mqtt.publish(TOPIC_SETPOINT, json.dumps({"setpoint": payload["temperature"]}))
+    else:
+        mqtt.publish(TOPIC_COMMAND, json.dumps(payload))
 
     conn = get_db_connection()
     try:
