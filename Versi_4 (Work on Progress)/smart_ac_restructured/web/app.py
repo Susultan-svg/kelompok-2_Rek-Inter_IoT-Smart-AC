@@ -37,19 +37,26 @@ TOPIC_PRESENCE = "home/ac/presence"
 TOPIC_COMMAND = "home/ac/command"
 TOPIC_MODE = "home/ac/mode"
 TOPIC_SETPOINT = "home/ac/setpoint"
+CAMERA_UPDATE_INTERVAL_SECONDS = int(os.getenv("CAMERA_UPDATE_INTERVAL_SECONDS", "120"))
 
 current_state = {
     "suhu": None,
     "kelembaban": None,
     "kelembapan": None,
-    "presence": False,
-    "motion": 0,
+    "presence": None,
+    "motion": None,
+    "presence_updated_at": None,
+    "camera_update_interval_seconds": CAMERA_UPDATE_INTERVAL_SECONDS,
     "ac_status": "OFF",
     "mode": "AUTO",
     "setpoint": 24,
     "broker_status": "DOWN",
     "esp32_status": "OFFLINE",
 }
+
+
+def now_iso():
+    return datetime.now().isoformat(timespec="seconds")
 
 
 def get_db_connection():
@@ -71,6 +78,33 @@ def serialize_row(row):
     if "motion" in data and "presence" not in data:
         data["presence"] = bool(data["motion"])
     return data
+
+
+def update_presence(value, updated_at=None):
+    previous = current_state.get("presence")
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        detected = normalized in {"1", "true", "yes", "ya", "ada", "person", "detected"}
+    else:
+        detected = bool(value)
+
+    current_state["presence"] = detected
+    current_state["motion"] = 1 if detected else 0
+    if isinstance(updated_at, (int, float)):
+        current_state["presence_updated_at"] = datetime.fromtimestamp(updated_at).isoformat(timespec="seconds")
+    elif updated_at is not None:
+        current_state["presence_updated_at"] = updated_at
+    elif previous != detected or current_state["presence_updated_at"] is None:
+        current_state["presence_updated_at"] = now_iso()
+
+
+def update_camera_interval(data):
+    if "camera_update_interval_seconds" not in data:
+        return
+    try:
+        current_state["camera_update_interval_seconds"] = int(float(data["camera_update_interval_seconds"]))
+    except (TypeError, ValueError):
+        pass
 
 
 def log_sensor_data():
@@ -139,13 +173,16 @@ def handle_mqtt_message(client, userdata, message):
         return
 
     if message.topic == TOPIC_TELEMETRY:
-        for key in ("suhu", "kelembaban", "presence", "ac_status", "mode", "setpoint", "esp32_status"):
+        for key in ("suhu", "kelembaban", "ac_status", "mode", "setpoint", "esp32_status"):
             if key in data:
                 current_state[key] = data[key]
+        update_camera_interval(data)
         if "kelembaban" in data:
             current_state["kelembapan"] = data["kelembaban"]
         if "presence" in data:
-            current_state["motion"] = 1 if data["presence"] else 0
+            update_presence(data["presence"], data.get("presence_updated_at") or data.get("timestamp"))
+        elif "motion" in data:
+            update_presence(data["motion"], data.get("presence_updated_at") or data.get("timestamp"))
         try:
             log_sensor_data()
         except Exception as exc:
@@ -157,8 +194,8 @@ def handle_mqtt_message(client, userdata, message):
                 current_state[key] = data[key]
 
     elif message.topic == TOPIC_PRESENCE and "presence" in data:
-        current_state["presence"] = bool(data["presence"])
-        current_state["motion"] = 1 if current_state["presence"] else 0
+        update_camera_interval(data)
+        update_presence(data["presence"], data.get("presence_updated_at") or data.get("timestamp"))
 
 
 @app.route("/")
@@ -233,7 +270,8 @@ def login():
 @app.route("/api/latest", methods=["GET"])
 def get_latest():
     current_state["kelembapan"] = current_state["kelembaban"]
-    current_state["motion"] = 1 if current_state["presence"] else 0
+    if current_state["presence"] is not None:
+        current_state["motion"] = 1 if current_state["presence"] else 0
     return jsonify(current_state)
 
 
