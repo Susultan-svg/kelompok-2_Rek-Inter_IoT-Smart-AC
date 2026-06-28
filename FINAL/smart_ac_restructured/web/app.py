@@ -61,9 +61,10 @@ def now_iso():
 
 
 def get_db_connection():
-    db_uri = os.environ.get(
-        "DB_URL",
-        "postgresql://postgres:z1J9csjQQTbMHedh@db.hzdqesqdjnngzsyigxqm.supabase.co:6543/postgres",
+    db_uri = (
+        os.environ.get("DB_URL")
+        or os.environ.get("DATABASE_URL")
+        or "postgresql://postgres:z1J9csjQQTbMHedh@db.hzdqesqdjnngzsyigxqm.supabase.co:6543/postgres"
     )
     if not db_uri:
         raise RuntimeError("DB_URL environment variable is required")
