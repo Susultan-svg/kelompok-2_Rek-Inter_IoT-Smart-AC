@@ -22,7 +22,8 @@ SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/ttyUSB0")
 SERIAL_BAUD = int(os.getenv("SERIAL_BAUD", "115200"))
 CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "0"))
 
-FACE_CHECK_INTERVAL_SECONDS = float(os.getenv("FACE_CHECK_INTERVAL_SECONDS", "60"))
+FACE_CHECK_INTERVAL_SECONDS = float(os.getenv("FACE_CHECK_INTERVAL_SECONDS", "10"))
+PRESENCE_CLEAR_SECONDS = float(os.getenv("PRESENCE_CLEAR_SECONDS", "30"))
 NO_PERSON_TIMEOUT_SECONDS = float(os.getenv("NO_PERSON_TIMEOUT_SECONDS", "300"))
 TELEMETRY_INTERVAL_SECONDS = float(os.getenv("TELEMETRY_INTERVAL_SECONDS", "30"))
 
@@ -205,14 +206,18 @@ def camera_worker() -> None:
             state.presence_updated_at = checked_at
             if found_person:
                 state.last_person_seen_at = checked_at
-            if state.presence != found_person:
-                state.presence = found_person
+
+            stable_presence = found_person or (
+                state.presence and checked_at - state.last_person_seen_at < PRESENCE_CLEAR_SECONDS
+            )
+            if state.presence != stable_presence:
+                state.presence = stable_presence
                 changed = True
 
         publish_presence()
 
         if changed:
-            print(f"presence changed: {'YES' if found_person else 'NO'}")
+            print(f"presence changed: {'YES' if state.presence else 'NO'}")
             publish_state()
 
         apply_auto_control()

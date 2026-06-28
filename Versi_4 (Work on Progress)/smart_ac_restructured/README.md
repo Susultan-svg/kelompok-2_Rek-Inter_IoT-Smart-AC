@@ -11,7 +11,7 @@ Versi ini memisahkan tugas sesuai arsitektur proyek:
 
 - `raspberry/edge_gateway.py`
   - membaca serial dari ESP32
-  - melakukan face detection dari kamera USB setiap 2 detik
+  - melakukan face detection dari kamera USB setiap 10 detik
   - menjalankan mode otomatis/manual
   - publish telemetry/status ke HiveMQ
   - subscribe command dari web via HiveMQ
@@ -75,6 +75,7 @@ Setpoint:
 
 ## Catatan Penting
 
-- Pada mode `AUTO`, Raspberry boleh menyalakan/mematikan AC berdasarkan kamera dan setpoint.
+- Pada mode `AUTO`, Raspberry membaca kamera setiap 10 detik. Jika tidak ada orang selama 5 menit, AC dimatikan. Jika ada orang dan AC masih mati, AC dinyalakan. Jika AC sudah menyala, Raspberry tidak mengubah status ON/OFF.
+- Status `presence` dibuat stabil: jika kamera sesekali gagal membaca wajah, status tidak langsung berubah ke `Tidak`; harus tidak terdeteksi sekitar 30 detik dulu.
 - Pada mode `MANUAL`, Raspberry tidak boleh mematikan/menyalakan AC berdasarkan kamera; Raspberry hanya meneruskan command dari web ke ESP32.
 - Frame kamera tidak disimpan ke database. Hasil kamera hanya dipakai untuk status `presence`.
