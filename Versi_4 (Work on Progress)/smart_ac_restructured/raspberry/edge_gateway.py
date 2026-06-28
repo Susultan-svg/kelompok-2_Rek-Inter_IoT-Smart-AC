@@ -22,8 +22,8 @@ SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/ttyUSB0")
 SERIAL_BAUD = int(os.getenv("SERIAL_BAUD", "115200"))
 CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "0"))
 
-FACE_CHECK_INTERVAL_SECONDS = float(os.getenv("FACE_CHECK_INTERVAL_SECONDS", "2"))
-NO_PERSON_TIMEOUT_SECONDS = float(os.getenv("NO_PERSON_TIMEOUT_SECONDS", "60"))
+FACE_CHECK_INTERVAL_SECONDS = float(os.getenv("FACE_CHECK_INTERVAL_SECONDS", "60"))
+NO_PERSON_TIMEOUT_SECONDS = float(os.getenv("NO_PERSON_TIMEOUT_SECONDS", "300"))
 TELEMETRY_INTERVAL_SECONDS = float(os.getenv("TELEMETRY_INTERVAL_SECONDS", "30"))
 
 TOPIC_TELEMETRY = "home/ac/telemetry"
@@ -175,12 +175,6 @@ def apply_auto_control() -> None:
         elif should_turn_off and state.ac_status == "ON":
             state.ac_status = "OFF"
             command = {"command": "OFF"}
-
-        if state.suhu is not None and state.ac_status == "ON":
-            if state.suhu > state.setpoint + 0.5:
-                command = {"command": "SET_TEMP", "temperature": max(16, state.setpoint)}
-            elif state.suhu < state.setpoint - 0.5:
-                command = {"command": "SET_TEMP", "temperature": min(30, state.setpoint + 1)}
 
     if command:
         write_serial_command(command)
