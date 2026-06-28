@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mode Otomatis - Smart AC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Mode Otomatis</p>
+        <h1>Kontrol AC Berbasis Kamera dan Setpoint</h1>
+      </div>
+      <nav class="nav-actions">
+        <a href="/mode">Mode</a>
+        <a href="/manual">Manual</a>
+        <button class="secondary" onclick="logout()">Logout</button>
+      </nav>
+    </header>
+
+    <section class="status-grid">
+      <div class="metric"><span>Suhu</span><strong id="suhu">-</strong></div>
+      <div class="metric"><span>Kelembapan</span><strong id="kelembapan">-</strong></div>
+      <div class="metric"><span>Ada Manusia</span><strong id="presence">-</strong></div>
+      <div class="metric"><span>Status AC</span><strong id="ac_status">-</strong></div>
+    </section>
+
+    <section class="control-panel">
+      <div>
+        <h2>Setpoint Otomatis</h2>
+        <p>Di mode ini web mengirim setpoint, lalu Raspberry Pi menentukan aksi AC dari suhu dan deteksi manusia.</p>
+      </div>
+      <div class="inline-control">
+        <input id="setpoint" type="number" min="16" max="30" value="24">
+        <button onclick="setSetpoint()">Simpan Setpoint</button>
+      </div>
+    </section>
+
+    <section class="chart-grid">
+      <div class="chart-card">
+        <h2>Grafik Suhu</h2>
+        <canvas id="tempChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h2>Grafik Kelembapan</h2>
+        <canvas id="humidityChart"></canvas>
+      </div>
+    </section>
+
+    <p id="message" class="message"></p>
+  </main>
+
+  <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  <script>startDashboard("AUTO");</script>
+</body>
+</html>
